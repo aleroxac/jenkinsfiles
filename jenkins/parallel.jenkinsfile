@@ -1,0 +1,26 @@
+pipeline {
+    agent { 
+        node { label 'jenkins-node-main-v1' }
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    stages {
+        stage('format & lint') {
+            parallel {
+                stage('format') {
+                    steps {
+                        sh "go fmt ./..."
+                    }
+                }
+                stage('lint') {
+                    steps {
+                        sh "go vet ./..."
+                    }
+                }
+            }
+        }
+    }
+}
