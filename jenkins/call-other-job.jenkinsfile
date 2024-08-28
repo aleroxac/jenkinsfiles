@@ -1,0 +1,34 @@
+pipeline {
+    agent { 
+        node { label 'jenkins-node-main-v1' }
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    stages {
+        stage('ci') {
+            steps {
+                sh 'scripts/build.sh'
+                sh 'scripts/test.sh'
+            }
+        }
+
+        stage('cd') {
+            steps {
+                script {
+                    env.TARGET_JOB_NAME = "continuous-delivery"
+                    env.TARGET_LAST_JOB_NUMBER = hudson.model.Hudson.instance.getItem("${TARGET_JOB_NAME}").getLastBuild().getNumber()
+                    env.TARGET_NEXT_JOB_NUMBER = "${TARGET_LAST_JOB_NUMBER}".toInteger() + 1
+                }
+
+                build job: "${TARGET_JOB_NAME}", parameters: [
+                    string(name: 'JOB_NAME',     value: "${TARGET_JOB_NAME}"),
+                    string(name: 'BUILD_NUMBER', value: "${TARGET_NEXT_JOB_NUMBER}")
+                ]
+            }   
+        }
+    }
+}
+
