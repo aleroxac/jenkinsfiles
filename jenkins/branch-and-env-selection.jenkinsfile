@@ -1,0 +1,53 @@
+pipeline {
+    // REQUIREMENTS
+    // jenkins job parameters
+    // - TARGET_ENV: choice
+    // - TARGET_BRANCH: choice
+
+    agent { 
+        node { label 'jenkins-node-main-v1' }
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    stages {
+        stage('clone') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [[$class: 'RelativeTargetDirectory',
+                    relativeTargetDir: '.deploy']],
+                    submoduleCfg: [],
+                    userRemoteConfigs: [[credentialsId: 'svc-jenkins-ssh-key', url: 'https://github.com/aleroxac/jenkins-scripts.git']]
+                ])
+            }
+        }
+
+        stage('build') {
+            steps {
+                sh '''
+                    .devops/scripts/build.sh app
+                '''
+            }
+        }
+
+        stage('test') {
+            steps {
+                sh '''
+                    .devops/scripts/test.sh unit
+                '''
+            }
+        }
+
+        stage('deploy: app') {
+            steps {
+                sh '.devops/scripts/deploy.sh'
+                sh '.devops/scripts/build.sh image'
+            }
+        }
+    }
+}
