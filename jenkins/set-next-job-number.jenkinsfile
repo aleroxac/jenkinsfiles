@@ -1,0 +1,26 @@
+pipeline {
+    // REQUIREMENTS
+    // jenkins job parameters
+    // - TARGET_JOB_NAME: string
+    // - NEXT_JOB_NUMBER: string
+
+    agent { 
+        node { label 'jenkins-node-main-v1' }
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    stages {
+        stage('build') {
+            steps {
+                script {
+                    def job = Jenkins.instance.getItem("${TARGET_JOB_NAME}")  
+                    job.nextBuildNumber = "${NEXT_JOB_NUMBER}"
+                    job.save()
+                }
+            }
+        }
+    }
+}

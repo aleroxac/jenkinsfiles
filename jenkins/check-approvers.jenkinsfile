@@ -1,0 +1,109 @@
+pipeline {
+    // REQUIREMENTS
+    // - create a .specs file into the application repo, with TEAM=devops
+    // - create a jenkins-allowed-invokers secret, with content: {"allowed_invokers": {"devops": ["acardoso.ti@gmail.com"]}
+
+    agent { 
+        node { label 'jenkins-node-main-v1' }
+    }
+
+    environment {
+        ALLOW_LIST_SECRET_NAME = "jenkins-allowed-invokers"
+        GCP_PROJECT_ID = "aleroxac"
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    stages {
+        stage('clone') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [[$class: 'RelativeTargetDirectory',
+                    relativeTargetDir: '.deploy']],
+                    submoduleCfg: [],
+                    userRemoteConfigs: [[credentialsId: 'svc-jenkins-ssh-key', url: 'https://github.com/aleroxac/jenkins-scripts.git']]
+                ])
+            }
+        }
+
+        stage('check') {
+            when {
+                expression { 
+                    (env.TARGET_ENV == 'prd' || env.TARGET_ENV == 'sdx') ||
+                    (env.TARGET_BRANCH == 'origin/main')
+                }
+            }
+            steps {
+                sh '''
+                    rm -fv /tmp/jenkins-allow-list.json
+                    if [ ! -f /tmp/jenkins-allow-list.json ]; then
+                        gcloud secrets versions access latest \
+                            --secret ${ALLOW_LIST_SECRET_NAME} \
+                            --project ${GCP_PROJECT_ID} > /tmp/jenkins-allow-list.json
+                    fi
+
+                    APP_TEAM=$(grep TEAM ${WORKSPACE}/.specs | cut -d '=' -f2 | sed 's/"//g; s/nucleus-devops/devops/g')
+                    jq -r ".allowed_approvers[\\"${APP_TEAM}\\"][]"  /tmp/jenkins-allow-list.json | paste -sd "," > /tmp/jenkins-allowed-approvers
+                '''
+
+                script {
+                    env.ALLOWED_APPROVERS  = sh(script: 'cat /tmp/jenkins-allowed-approvers', returnStdout: true).trim()
+                }
+            }
+        }
+
+        stage('test') {
+            steps {
+                sh '''
+                    .devops/scripts/test.sh unit
+                '''
+            }
+        }
+
+        stage('build') {
+            steps {
+                sh '''
+                    .devops/scripts/build.sh app
+                    .devops/scripts/build.sh image
+                '''
+            }
+        }
+
+        stage('approval') {
+            when {
+                expression { 
+                    (env.TARGET_ENV == 'prd' || env.TARGET_ENV == 'sdx') ||
+                    (env.TARGET_BRANCH == 'origin/main')
+                }
+            }
+            steps {
+                timeout ( time: 10, unit: "MINUTES" ) {
+                    script {
+                        approver = input \
+                            message: 'Approve deployment?',
+                            ok: 'Deploy',
+                            submitter: ALLOWED_APPROVERS,
+                            submitterParameter: 'approver'
+
+                        if (ALLOWED_APPROVERS.split(',').contains(approver)) {
+                            echo "Authorized approver: ${approver}"
+                        } else {
+                            error "Unauthorized approver: ${approver}. Deployment aborted."
+                        }
+                    }   
+                }
+            }
+        }
+
+        stage('deploy') {
+            steps {
+                sh '.devops/scripts/deploy.sh'
+            }
+        }
+    }
+}

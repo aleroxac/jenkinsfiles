@@ -1,0 +1,58 @@
+pipeline {
+    agent { 
+        node { label 'jenkins-node-main-v1' }
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    stages {
+        stage('get slow jobs') {
+            steps {
+                script {
+                    def getSortedJobsByDuration() {
+                        def jobs = Jenkins.instance.getAllItems(Job.class)
+                        def sortedJobs = jobs.sort { a, b ->
+                            def aDuration = a.getBuilds()?.getLastBuild()?.duration ?: 0
+                            def bDuration = b.getBuilds()?.getLastBuild()?.duration ?: 0
+                            bDuration <=> aDuration
+                        }
+                        return sortedJobs
+                    }
+
+                    def formatDuration(durationInMillis) {
+                        def seconds = durationInMillis.toBigDecimal().doubleValue() / 1000
+                        def hours = (seconds / 3600).toInteger()
+                        def minutes = ((seconds % 3600) / 60).toInteger()
+                        seconds = (seconds % 60).toInteger()
+
+                        return String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                    }
+
+                    def getTopNJobs(n, maxDuration) {
+                        def sortedJobs = getSortedJobsByDuration()
+                        def topNJobs = sortedJobs.take(n).findAll { job ->
+                            def duration = job.getBuilds()?.getLastBuild()?.duration ?: 0
+                            duration > maxDuration
+                        }.collect { job ->
+                            [name: job.displayName, duration: formatDuration(job.getBuilds()?.getLastBuild()?.duration ?: 0)]
+                        }
+                        return topNJobs
+                    }
+
+
+                    def getTopSlowerJobs(n, maxDuration) {
+                        def topNJobs = getTopNJobs(n, maxDuration)
+                        topNJobs.eachWithIndex { job, index ->
+                        println "${index + 1}: ${job.duration} - ${job.name}"
+                        }
+                    }
+
+                    // get the top 10 jobs with duration >= 10min(600000 ms)
+                    getTopSlowerJobs(10, 600000)
+                }
+            }
+        }
+    }
+}
