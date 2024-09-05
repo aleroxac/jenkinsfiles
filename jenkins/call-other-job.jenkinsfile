@@ -27,7 +27,7 @@ pipeline {
                     string(name: 'JOB_NAME',     value: "${TARGET_JOB_NAME}"),
                     string(name: 'BUILD_NUMBER', value: "${TARGET_NEXT_JOB_NUMBER}")
                 ]
-            }   
+            }
         }
     }
 }
