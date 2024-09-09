@@ -47,7 +47,7 @@ pipeline {
                             --project ${GCP_PROJECT_ID} > /tmp/jenkins-allow-list.json
                     fi
 
-                    APP_TEAM=$(grep TEAM ${WORKSPACE}/.specs | cut -d '=' -f2 | sed 's/"//g; s/nucleus-devops/devops/g')
+                    APP_TEAM=$(grep TEAM ${WORKSPACE}/.specs | cut -d '=' -f2 | sed 's/"//g')
                     jq -r ".allowed_invokers[\\"${APP_TEAM}\\"][]"  /tmp/jenkins-allow-list.json | paste -sd "," > /tmp/jenkins-allowed-invokers
                 '''
 
