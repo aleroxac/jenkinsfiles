@@ -1,0 +1,24 @@
+pipeline {
+    // REQUIREMENTS
+    // jenkins job parameters
+    // - TARGET_JOB_NAME: string
+
+    agent { 
+        node { label 'jenkins-node-main-v1' }
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    stages {
+        stage('build') {
+            steps {
+                script {
+                    env.BUILD_NUMBER = hudson.model.Hudson.instance.getItem("${TARGET_JOB_NAME}").getLastBuild().getNumber().toInteger()
+                    echo "${TARGET_JOB_NAME}: build-number=${JOB_BUILD_NUMBER}"
+                }
+            }
+        }
+    }
+}
