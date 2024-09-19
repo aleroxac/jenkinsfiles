@@ -14,4 +14,4 @@ A curated collection of badass jenkinsfiles
 - [get a slow job top list](jenkins/get-slow-jobs.jenkinsfile)
 - [steps and stages running in parallel](jenkins/parallel.jenkinsfile)
 - [set next job build number](jenkins/set-next-job-number.jenkinsfile)
-- [get job buld number](jenkins/get-job-build-number.jenkinsfile)
+- [get job build number](jenkins/get-job-build-number.jenkinsfile)
