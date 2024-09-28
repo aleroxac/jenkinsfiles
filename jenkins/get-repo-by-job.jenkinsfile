@@ -1,0 +1,31 @@
+pipeline {
+    // REQUIREMENTS
+    // jenkins job parameters
+    // - TARGET_JOB_NAME: string
+
+    agent { 
+        node { label 'jenkins-node-main-v1' }
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    stages {
+        stage('build') {
+            steps {
+                script {
+                    def job = Jenkins.instance.getItemByFullName(env.TARGET_JOB_NAME)
+                    if (job) {
+                        def scm = job.getSCMs()
+                        if (scm && scm[0] && scm[0].getUserRemoteConfigs()) {
+                            def repositoryUrl = scm[0].getUserRemoteConfigs()[0].getUrl()
+                            def repoName = repositoryUrl.tokenize('/').last().replace('.git', '')
+                            println "${repoName}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
