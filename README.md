@@ -15,3 +15,5 @@ A curated collection of badass jenkinsfiles
 - [steps and stages running in parallel](jenkins/parallel.jenkinsfile)
 - [set next job build number](jenkins/set-next-job-number.jenkinsfile)
 - [get job build number](jenkins/get-job-build-number.jenkinsfile)
+- [get jobs by repo](jenkinsfile/get-jobs-by-repo.jenkinsfile)
+- [get repo by job](jenkinsfile/get-repo-by-job.jenkinsfile)
